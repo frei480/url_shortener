@@ -15,3 +15,7 @@ class Link(SQLModel, table=True):
     expires_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=365)
     )
+
+    def update_access_time(self):
+        self.last_accessed_at = datetime.now(timezone.utc)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(days=365)
