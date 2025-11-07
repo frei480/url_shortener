@@ -69,6 +69,15 @@ async def redirect_to_original_url(
     return RedirectResponse(link_obj.original_url, status_code=302)
 
 
+@app.get("/details/{short_link}", response_model=Link)
+async def get_details(short_link: str, session: AsyncSession = Depends(get_session)):
+    link = await session.exec(select(Link).where(Link.short_url == short_link))
+    link_obj = link.first()
+    if not link_obj:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return link
+
+
 @app.get("/health", status_code=200)
 def health_check():
     return {"status": "ok"}
