@@ -4,6 +4,7 @@ from fastapi import FastAPI
 app = FastAPI(title="Url shortener")
 
 
+@app.get("/sh")
 @app.get("/health", status_code=200)
 def health_check():
     return {"status": "ok"}
