@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -10,9 +11,13 @@ from model import Link
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("before init db")
     await init_db()
     yield
 
