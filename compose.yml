@@ -1,0 +1,32 @@
+serivces:
+  url_shortener:
+    build: .
+    image: url_shortener
+    container_name: url_shortener
+    ports: 
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+     - urlshortenernet
+  db:
+    image: postgres:17-alpine
+    container_name: db_urlshortener
+    volumes:
+      - "/var/lib/postgresql/:/var/lib/postgresql/"
+    environment:
+      - POSTGRES_DB = ${DB_NAME}
+      - POSTGRES_USER = ${DB_USER}      
+      - POSTGRES_PASSWORD = ${DB_PASS}
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - urlshortenernet
+
+networks:
+  urlshortenernet:
+    driver:bridge
