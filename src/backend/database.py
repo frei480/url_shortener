@@ -1,9 +1,10 @@
 import logging
 
-from config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.backend.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 
 logging.basicConfig(level=logging.INFO)
 
