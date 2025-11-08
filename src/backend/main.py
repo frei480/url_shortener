@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
-
 from fastapi.responses import RedirectResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -17,7 +16,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("before init db")
@@ -26,8 +24,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Url shortener", lifespan=lifespan)
-
-
 
 
 @app.get("/health", status_code=200)
@@ -90,7 +86,7 @@ async def redirect_to_original_url(
     str_to_jump: str = link_obj.original_url
     session.add(link_obj)
     await session.commit()
-    return RedirectResponse(str_to_jump, status_code=301,headers=)
+    return RedirectResponse(str_to_jump, status_code=301)
 
 
 def main():
