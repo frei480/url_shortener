@@ -60,6 +60,18 @@ async def get_details(short_link: str, session: AsyncSession = Depends(get_sessi
     return link
 
 
+async def short_lnk_generator(session: AsyncSession) -> str:
+    short_link: str = uuid4().hex[:8]
+    while True:
+        check_short_link = await session.exec(
+            select(Link).where(Link.short_url == short_link)
+        )
+        if check_short_link.first() is None:
+            break
+        short_link = uuid4().hex[:8]
+    return short_link
+
+
 @app.post("/shorten", response_model=Link, status_code=201)
 async def create_short_url(
     original_url: str, session: AsyncSession = Depends(get_session)
@@ -72,14 +84,8 @@ async def create_short_url(
     if exists_link_obj:
         return exists_link_obj
 
-    short_link: str = uuid4().hex[:8]
-    while True:
-        check_short_link = await session.exec(
-            select(Link).where(Link.short_url == short_link)
-        )
-        if check_short_link.first() is None:
-            break
-        short_link = uuid4().hex[:8]
+    short_link: str = await short_lnk_generator(session)
+
     link = Link(original_url=original_url, short_url=short_link)
     session.add(link)
     await session.commit()
