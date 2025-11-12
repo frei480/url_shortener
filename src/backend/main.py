@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-cfg = ConfigBase()
+cfg = ConfigBase()  # type: ignore
 
 DB_URL = f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}"
 logger.info(DB_URL)
