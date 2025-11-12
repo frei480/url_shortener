@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.backend.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from src.backend.model import Link
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from src.backend.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 
 logging.basicConfig(level=logging.INFO)
 
