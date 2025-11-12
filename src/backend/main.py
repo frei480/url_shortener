@@ -6,24 +6,44 @@ from uuid import uuid4
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlmodel import select
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.backend.database import get_session, init_db
 from src.backend.model import Link
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from src.backend.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+
+DB_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.engine = create_async_engine(DB_URL, echo=True)
     logger.info("before init db")
     await init_db()
     yield
 
 
 app = FastAPI(title="Url shortener", lifespan=lifespan)
+
+
+async def init_db():
+    async with app.state.engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+
+async def get_session():
+    async with AsyncSession(app.state.engine) as session:
+        yield session
 
 
 @app.get("/health", status_code=200)
