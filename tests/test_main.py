@@ -24,15 +24,10 @@ async def create_test_db():
 async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(app.state.engine) as session:
         yield session
-    # async with AsyncSession(test_engine) as session:
-    #     yield session
-    # await conn.run_sync(SQLModel.metadata.drop_all)
 
 
 @pytest.fixture(scope="session")
 def app_with_override():
-    # app.state.engine = test_engine
-
     app.dependency_overrides[get_session] = get_test_session
     yield app
     app.dependency_overrides.clear()
@@ -70,3 +65,16 @@ async def test_shorten_url(ac: AsyncClient):
     assert response2.status_code == 201
     assert data1["id"] == data2["id"]
     assert data1["short_url"] == data2["short_url"]
+
+
+@pytest.mark.usefixtures("create_test_db")
+@pytest.mark.asyncio
+async def test_shorten_url_really_short(ac: AsyncClient):
+    response = await ac.post(
+        "/shorten", params={"original_url": "https://www.example.com"}
+    )
+
+    data = response.json()
+
+    assert response.status_code == 201
+    assert len(data["short_url"]) == 8
