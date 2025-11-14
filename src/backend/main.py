@@ -91,20 +91,20 @@ async def create_short_url(
 async def redirect_to_original_url(
     short_link: str, session: AsyncSession = Depends(get_session)
 ):
-    link = await session.exec(select(Link).where(Link.short_url == short_link))
-    link_obj = link.first()
-    if not link_obj:
+    result = await session.exec(select(Link).where(Link.short_url == short_link))
+    link = result.first()
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    if link_obj.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    if link.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
         await session.delete(link)
         await session.commit()
         raise HTTPException(status_code=410, detail="Link has expired")
 
-    link_obj.update_access_time()
+    link.update_access_time()
 
-    str_to_jump: str = link_obj.original_url
-    session.add(link_obj)
+    str_to_jump: str = link.original_url
+    session.add(link)
     await session.commit()
     return RedirectResponse(str_to_jump, status_code=301)
 
