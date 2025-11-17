@@ -10,3 +10,6 @@ class ConfigBase(BaseSettings):
     db_host: str
     db_port: int
     db_name: str
+
+
+settings = ConfigBase()
