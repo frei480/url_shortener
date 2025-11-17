@@ -6,7 +6,7 @@ from uuid import uuid4
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlmodel import SQLModel, select
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.config import ConfigBase
@@ -27,17 +27,12 @@ cfg = ConfigBase()  # type: ignore
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.engine = engine
-    logger.info("before init db")
-    await init_db()
+    logger.info("Start app")
+
     yield
 
 
 app = FastAPI(title="Url shortener", lifespan=lifespan)
-
-
-async def init_db():
-    async with app.state.engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 @app.get("/health", status_code=200)
