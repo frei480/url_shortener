@@ -10,7 +10,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.config import ConfigBase
-from src.backend.db.session import engine, get_session
+from src.backend.db.session import get_session
 from src.backend.model import Link
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ cfg = ConfigBase()  # type: ignore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.engine = engine
+    # app.state.engine = engine
     logger.info("Start app")
 
     yield

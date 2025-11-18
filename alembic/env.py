@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
 
 from alembic import context
 
@@ -66,18 +66,11 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def run_async_migrations() -> None:
+async def run_async_migrations(connectable: AsyncEngine) -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
 
@@ -86,8 +79,30 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    connectible = context.config.attributes.get("connection", None)
+    if connectible is None:
+        connectible = async_engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
+    if isinstance(connectible, AsyncEngine):
+        asyncio.run(run_async_migrations(connectible))
+    else:
+        do_run_migrations(connectible)
+    # from https://github.com/sqlalchemy/alembic/discussions/1450
+    # from sqlalchemy.util.concurrency import await_only, in_greenlet
 
-    asyncio.run(run_async_migrations())
+    # if in_greenlet():
+    #     await_only(run_async_migrations())
+    # else:
+    #     asyncio.run(run_async_migrations())
+    # try:
+    #     loop = asyncio.get_running_loop()
+    # except RuntimeError:
+    #     asyncio.run(run_async_migrations())
+    # else:
+    #     loop.create_task(run_async_migrations())
 
 
 if context.is_offline_mode():
