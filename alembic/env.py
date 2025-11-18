@@ -29,10 +29,13 @@ target_metadata = Link.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-config.set_main_option(
-    "sqlalchemy.url",
-    f"postgresql+asyncpg://{settings.db_user}:{settings.db_pass}@{settings.db_host}:{settings.db_port}/{settings.db_name}",
-)
+
+
+def get_db_url():
+    config.set_main_option(
+        "sqlalchemy.url",
+        f"postgresql+asyncpg://{settings.db_user}:{settings.db_pass}@{settings.db_host}:{settings.db_port}/{settings.db_name}",
+    )
 
 
 def run_migrations_offline() -> None:
@@ -47,7 +50,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_db_url() or config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -90,19 +93,6 @@ def run_migrations_online() -> None:
         asyncio.run(run_async_migrations(connectible))
     else:
         do_run_migrations(connectible)
-    # from https://github.com/sqlalchemy/alembic/discussions/1450
-    # from sqlalchemy.util.concurrency import await_only, in_greenlet
-
-    # if in_greenlet():
-    #     await_only(run_async_migrations())
-    # else:
-    #     asyncio.run(run_async_migrations())
-    # try:
-    #     loop = asyncio.get_running_loop()
-    # except RuntimeError:
-    #     asyncio.run(run_async_migrations())
-    # else:
-    #     loop.create_task(run_async_migrations())
 
 
 if context.is_offline_mode():

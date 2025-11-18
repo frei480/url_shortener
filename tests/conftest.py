@@ -45,7 +45,7 @@ async def test_engine():
 #         await conn.run_sync(lambda c: command.upgrade(alembic_cfg, "head"))
 #     yield
 
-def apply_migartions():
+def apply_migrations():
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", ASYNC_TEST_DB_URL)
     command.downgrade(alembic_cfg, "base")

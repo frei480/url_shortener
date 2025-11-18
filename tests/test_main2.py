@@ -15,6 +15,7 @@ async def test_healthcheck(client: AsyncClient):
     assert response.json()["status"] == "ok"
 
 
+@pytest.mark.usefixtures("apply_migrations")
 @pytest.mark.asyncio
 async def test_link_redirect(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
@@ -26,7 +27,7 @@ async def test_link_redirect(client: AsyncClient, session: AsyncSession):
     assert response2.status_code == 301
 
 
-@pytest.mark.usefixtures("apply_migartions")
+@pytest.mark.usefixtures("apply_migrations")
 @pytest.mark.asyncio
 async def test_link_expiration(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
