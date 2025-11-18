@@ -8,15 +8,14 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.config import cfg
 from src.backend.model import Link
+from src.backend.repository import get_link_by_full_url, get_short_link
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 DB_URL = f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}"
 
@@ -47,7 +46,7 @@ def health_check():
 
 @app.get("/details/{short_link}", response_model=Link)
 async def get_details(short_link: str, session: SessionDep) -> Link:
-    result = await session.exec(select(Link).where(Link.short_url == short_link))
+    result = await get_short_link(session, short_link)
     link = result.first()
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
@@ -57,9 +56,7 @@ async def get_details(short_link: str, session: SessionDep) -> Link:
 async def short_lnk_generator(session: SessionDep) -> str:
     short_link: str = uuid4().hex[:8]
     while True:
-        check_short_link = await session.exec(
-            select(Link).where(Link.short_url == short_link)
-        )
+        check_short_link = await get_short_link(session, short_link)
         if check_short_link.first() is None:
             break
         short_link = uuid4().hex[:8]
@@ -68,13 +65,11 @@ async def short_lnk_generator(session: SessionDep) -> str:
 
 @app.post("/shorten", response_model=Link, status_code=201)
 async def create_short_url(original_url: str, session: SessionDep):
-    exists_link = await session.exec(
-        select(Link).where(Link.original_url == original_url)
-    )
-    exists_link_obj = exists_link.first()
+    result = await get_link_by_full_url(session, original_url)
+    exists_link = result.first()
 
-    if exists_link_obj:
-        return exists_link_obj
+    if exists_link:
+        return exists_link
 
     short_link: str = await short_lnk_generator(session)
 
@@ -87,7 +82,7 @@ async def create_short_url(original_url: str, session: SessionDep):
 
 @app.get("/{short_link}", response_class=RedirectResponse)
 async def redirect_to_original_url(short_link: str, session: SessionDep):
-    result = await session.exec(select(Link).where(Link.short_url == short_link))
+    result = await get_short_link(session, short_link)
     link = result.first()
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
