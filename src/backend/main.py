@@ -1,32 +1,37 @@
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Annotated
 from uuid import uuid4
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.backend.config import ConfigBase
-from src.backend.db.session import get_session
+from src.backend.config import cfg
 from src.backend.model import Link
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-logging.basicConfig(level=logging.INFO)
+DB_URL = f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}"
 
-logger = logging.getLogger(__name__)
 
-cfg = ConfigBase()  # type: ignore
+async def get_session():
+    async with AsyncSession(app.state.engine) as session:
+        yield session
+
+
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # app.state.engine = engine
+    app.state.engine = create_async_engine(DB_URL, echo=True)
     logger.info("Start app")
 
     yield
@@ -41,15 +46,15 @@ def health_check():
 
 
 @app.get("/details/{short_link}", response_model=Link)
-async def get_details(short_link: str, session: AsyncSession = Depends(get_session)):
-    link = await session.exec(select(Link).where(Link.short_url == short_link))
-    link_obj = link.first()
-    if not link_obj:
+async def get_details(short_link: str, session: SessionDep) -> Link:
+    result = await session.exec(select(Link).where(Link.short_url == short_link))
+    link = result.first()
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
     return link
 
 
-async def short_lnk_generator(session: AsyncSession) -> str:
+async def short_lnk_generator(session: SessionDep) -> str:
     short_link: str = uuid4().hex[:8]
     while True:
         check_short_link = await session.exec(
@@ -62,9 +67,7 @@ async def short_lnk_generator(session: AsyncSession) -> str:
 
 
 @app.post("/shorten", response_model=Link, status_code=201)
-async def create_short_url(
-    original_url: str, session: AsyncSession = Depends(get_session)
-):
+async def create_short_url(original_url: str, session: SessionDep):
     exists_link = await session.exec(
         select(Link).where(Link.original_url == original_url)
     )
@@ -83,9 +86,7 @@ async def create_short_url(
 
 
 @app.get("/{short_link}", response_class=RedirectResponse)
-async def redirect_to_original_url(
-    short_link: str, session: AsyncSession = Depends(get_session)
-):
+async def redirect_to_original_url(short_link: str, session: SessionDep):
     result = await session.exec(select(Link).where(Link.short_url == short_link))
     link = result.first()
     if not link:
@@ -102,10 +103,6 @@ async def redirect_to_original_url(
     session.add(link)
     await session.commit()
     return RedirectResponse(str_to_jump, status_code=301)
-
-
-def main():
-    print("Hello from url-shortener!")
 
 
 if __name__ == "__main__":

@@ -12,4 +12,4 @@ class ConfigBase(BaseSettings):
     db_name: str
 
 
-settings = ConfigBase()
+cfg = ConfigBase()

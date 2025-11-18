@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from src.backend.config import settings
+from src.backend.config import cfg
 from src.backend.model import Link
 
 target_metadata = Link.metadata
@@ -34,7 +34,7 @@ target_metadata = Link.metadata
 def get_db_url():
     config.set_main_option(
         "sqlalchemy.url",
-        f"postgresql+asyncpg://{settings.db_user}:{settings.db_pass}@{settings.db_host}:{settings.db_port}/{settings.db_name}",
+        f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}",
     )
 
 
