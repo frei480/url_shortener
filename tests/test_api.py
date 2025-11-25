@@ -67,3 +67,16 @@ async def test_redirect_404(client: AsyncClient):
     data = response.json()
     assert data == {"detail": "Link not found"}
     assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("apply_migrations")
+@pytest.mark.asyncio
+async def test_link_details(client: AsyncClient, session: AsyncSession):
+    url: str = "http://www.example.com"
+    response = await client.post("/shorten", params={"original_url": url})
+    short_url = response.json()["short_url"]
+
+    response2 = await client.get(f"/details/{short_url}", follow_redirects=False)
+
+    assert response2.json()["short_url"] == short_url
+    assert response2.json()["original_url"] == url
