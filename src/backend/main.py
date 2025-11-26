@@ -101,6 +101,18 @@ async def redirect_to_original_url(short_link: str, session: SessionDep):
     return RedirectResponse(str_to_jump, status_code=301)
 
 
+@app.delete("/{short_link}")
+async def erase_short_link(short_link: str, session: SessionDep):
+    if app.state.logined:
+        result = await get_short_link(session, short_link)
+        link = result.first()
+        if not link:
+            raise HTTPException(status_code=404, detail="Link not found")
+        else:
+            await session.delete(link)
+            await session.commit()
+
+
 @app.post("/login/")
 async def login(data: Annotated[FormData, Form()]):
     if cfg.password == data.password and cfg.username == data.username:
