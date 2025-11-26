@@ -15,6 +15,7 @@ from src.backend.config import cfg
 from src.backend.model import Link
 from src.backend.repository import get_link_by_full_url, get_short_link
 from src.backend.users import (
+    FormData,
     UserInDB,
     fake_hash_password,
     fake_users_db,
@@ -33,7 +34,7 @@ async def get_session():
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
-UserDep = Annotated[User, Depends(get_current_active_user)]
+UserDep = Annotated[FormData, Depends(get_current_active_user)]
 
 
 @asynccontextmanager
