@@ -24,3 +24,8 @@ class Link(SQLModel, table=True):
         self.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
             days=365
         )
+
+
+class FormData(SQLModel):
+    username: str
+    password: str

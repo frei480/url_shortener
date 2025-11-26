@@ -5,13 +5,13 @@ from typing import Annotated
 from uuid import uuid4
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.config import cfg
-from src.backend.model import Link
+from src.backend.model import FormData, Link
 from src.backend.repository import get_link_by_full_url, get_short_link
 
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +31,7 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.engine = create_async_engine(DB_URL, echo=True)
+    app.state.logined = False
     logger.info("Start app")
 
     yield
@@ -98,6 +99,13 @@ async def redirect_to_original_url(short_link: str, session: SessionDep):
     session.add(link)
     await session.commit()
     return RedirectResponse(str_to_jump, status_code=301)
+
+
+@app.post("/login/")
+async def login(data: Annotated[FormData, Form()]):
+    if cfg.password == data.password and cfg.username == data.username:
+        app.state.logined = True
+        return data
 
 
 if __name__ == "__main__":
