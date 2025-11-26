@@ -5,14 +5,21 @@ from typing import Annotated
 from uuid import uuid4
 
 import uvicorn
-from fastapi import Depends, FastAPI, Form, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.config import cfg
-from src.backend.model import FormData, Link
+from src.backend.model import Link
 from src.backend.repository import get_link_by_full_url, get_short_link
+from src.backend.users import (
+    UserInDB,
+    fake_hash_password,
+    fake_users_db,
+    get_current_active_user,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +33,7 @@ async def get_session():
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+UserDep = Annotated[User, Depends(get_current_active_user)]
 
 
 @asynccontextmanager
@@ -65,7 +73,14 @@ async def short_lnk_generator(session: SessionDep) -> str:
 
 
 @app.post("/shorten", response_model=Link, status_code=201)
-async def create_short_url(original_url: str, session: SessionDep):
+async def create_short_url(
+    original_url: str,
+    session: SessionDep,
+    current_user: UserDep,
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     result = await get_link_by_full_url(session, original_url)
     exists_link = result.first()
 
@@ -102,8 +117,12 @@ async def redirect_to_original_url(short_link: str, session: SessionDep):
 
 
 @app.delete("/{short_link}")
-async def erase_short_link(short_link: str, session: SessionDep):
-    if app.state.logined:
+async def erase_short_link(
+    short_link: str,
+    session: SessionDep,
+    current_user: UserDep,
+):
+    if current_user:
         result = await get_short_link(session, short_link)
         link = result.first()
         if not link:
@@ -113,11 +132,17 @@ async def erase_short_link(short_link: str, session: SessionDep):
             await session.commit()
 
 
-@app.post("/login/")
-async def login(data: Annotated[FormData, Form()]):
-    if cfg.password == data.password and cfg.username == data.username:
-        app.state.logined = True
-        return data
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    app.state.logined = True
+    return {"access_token": user.username, "token_type": "bearer"}
 
 
 if __name__ == "__main__":
