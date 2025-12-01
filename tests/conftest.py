@@ -7,12 +7,20 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from alembic import command
+from src.backend.config import cfg
 from src.backend.db.session import get_session
 from src.backend.main import app
+from src.backend.users import fake_users_db, get_current_active_user, get_user
 
 ALEMBIC_CONFIG_PATH = "./alembic.ini"
 TEST_DB_URL = "sqlite:///test.db"
 ASYNC_TEST_DB_URL = "sqlite+aiosqlite:///test.db"
+
+
+@pytest.fixture(scope="session")
+def test_user():
+    user = get_user(fake_users_db, cfg.username)
+    app.dependency_overrides[get_current_active_user] = lambda: user
 
 
 @pytest.fixture(scope="session")

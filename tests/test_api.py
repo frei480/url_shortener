@@ -15,7 +15,7 @@ async def test_healthcheck(client: AsyncClient):
     assert response.json()["status"] == "ok"
 
 
-@pytest.mark.usefixtures("apply_migrations")
+@pytest.mark.usefixtures("apply_migrations", "test_user")
 @pytest.mark.asyncio
 async def test_link_redirect(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
