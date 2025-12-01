@@ -80,3 +80,16 @@ async def test_link_details(client: AsyncClient, session: AsyncSession):
 
     assert response2.json()["short_url"] == short_url
     assert response2.json()["original_url"] == url
+
+
+@pytest.mark.asyncio
+async def test_auth_current_user(client: AsyncClient):
+    response = await client.get("/users/me")
+    assert response.status_code == 401
+
+
+@pytest.mark.usefixtures("test_user")
+@pytest.mark.asyncio
+async def test_auth_current_user_success(client: AsyncClient):
+    response = await client.get("/users/me")
+    assert response.status_code == 200
