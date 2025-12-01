@@ -121,12 +121,10 @@ async def erase_short_link(
 ):
     result = await get_short_link(session, short_link)
     link = result.first()
-    if not link:
-        raise HTTPException(status_code=404, detail="Link not found")
-    else:
+    if link:
         await session.delete(link)
         await session.commit()
-        return {f"{short_link}": "deleted"}
+    return {f"{short_link}": "deleted"}
 
 
 @app.get("/users/me")
