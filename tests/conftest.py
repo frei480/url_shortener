@@ -17,10 +17,12 @@ TEST_DB_URL = "sqlite:///test.db"
 ASYNC_TEST_DB_URL = "sqlite+aiosqlite:///test.db"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def test_user():
     user = get_user(fake_users_db, cfg.username)
     app.dependency_overrides[get_current_active_user] = lambda: user
+    yield
+    del app.dependency_overrides[get_current_active_user]
 
 
 @pytest.fixture(scope="session")

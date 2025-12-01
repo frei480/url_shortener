@@ -27,7 +27,7 @@ async def test_link_redirect(client: AsyncClient, session: AsyncSession):
     assert response2.status_code == 301
 
 
-@pytest.mark.usefixtures("apply_migrations")
+@pytest.mark.usefixtures("apply_migrations", "test_user")
 @pytest.mark.asyncio
 async def test_link_expiration(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
@@ -48,6 +48,7 @@ async def test_link_expiration(client: AsyncClient, session: AsyncSession):
     assert response_expired.json()["detail"] == "Link has expired"
 
 
+@pytest.mark.usefixtures("apply_migrations", "test_user")
 @pytest.mark.asyncio
 async def test_shorten_url_really_short(client: AsyncClient):
     response = await client.post(
@@ -69,7 +70,7 @@ async def test_redirect_404(client: AsyncClient):
     assert response.status_code == 404
 
 
-@pytest.mark.usefixtures("apply_migrations")
+@pytest.mark.usefixtures("apply_migrations", "test_user")
 @pytest.mark.asyncio
 async def test_link_details(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
@@ -93,3 +94,20 @@ async def test_auth_current_user(client: AsyncClient):
 async def test_auth_current_user_success(client: AsyncClient):
     response = await client.get("/users/me")
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_unauthorized(client: AsyncClient):
+    response = await client.delete("/ihavenoidea")
+    assert response.status_code == 401
+
+
+@pytest.mark.usefixtures("apply_migrations", "test_user")
+async def test_delete_authorized(client: AsyncClient):
+    url: str = "http://www.example.com"
+    response = await client.post("/shorten", params={"original_url": url})
+    short_url = response.json()["short_url"]
+
+    response = await client.delete(f"/{short_url}")
+    assert response.status_code == 200
+    assert response.json() == {f"{short_url}": "deleted"}

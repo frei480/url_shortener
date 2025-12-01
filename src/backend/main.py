@@ -117,16 +117,16 @@ async def redirect_to_original_url(short_link: str, session: SessionDep):
 async def erase_short_link(
     short_link: str,
     session: SessionDep,
-    current_user: UserDep,
+    _: UserDep,
 ):
-    if current_user:
-        result = await get_short_link(session, short_link)
-        link = result.first()
-        if not link:
-            raise HTTPException(status_code=404, detail="Link not found")
-        else:
-            await session.delete(link)
-            await session.commit()
+    result = await get_short_link(session, short_link)
+    link = result.first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    else:
+        await session.delete(link)
+        await session.commit()
+        return {f"{short_link}": "deleted"}
 
 
 @app.get("/users/me")
