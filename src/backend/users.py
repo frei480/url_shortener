@@ -1,13 +1,14 @@
+import secrets
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from src.backend.config import cfg
-from src.backend.model import FormData
+from src.backend.model import User
 
-fake_users_db = {
-    "johndoe": {
+fake_users_db: dict[str, dict[str, str | bool]] = {
+    "appleseed": {
         "username": cfg.username,
         "full_name": "John Doe",
         "email": "johndoe@example.com",
@@ -16,44 +17,45 @@ fake_users_db = {
     },
 }
 
+security = HTTPBasic()
+
 
 def fake_hash_password(password: str):
     return "fakehashed" + password
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+def get_user(db: dict[str, dict[str, str | bool]], username: str):
+    user_data = db.get(username)
+    if user_data:
+        return User(**user_data)
 
 
-class UserInDB(FormData):
-    hashed_password: str
+def get_current_user(
+    credentials: Annotated[HTTPBasicCredentials, Depends(security)],
+):
+    current_username_bytes = credentials.username.encode("utf8")
+    user = get_user(fake_users_db, credentials.username)
 
-
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
-
-
-def fake_decode_token(token):
-    # This doesn't provide any security at all
-    # Check the next version
-    user = get_user(fake_users_db, token)
-    return user
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    user = fake_decode_token(token)
-    if not user:
+    correct_username_bytes = user.username.encode("utf8")
+    is_correct_username = secrets.compare_digest(
+        current_username_bytes, correct_username_bytes
+    )
+    current_password_bytes = fake_hash_password(credentials.password).encode("utf8")
+    correct_password_bytes = user.hashed_password.encode("utf-8")
+    is_correct_password = secrets.compare_digest(
+        current_password_bytes, correct_password_bytes
+    )
+    if not (is_correct_username and is_correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
         )
     return user
 
 
 async def get_current_active_user(
-    current_user: Annotated[FormData, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")

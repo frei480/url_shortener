@@ -26,6 +26,9 @@ class Link(SQLModel, table=True):
         )
 
 
-class FormData(SQLModel):
+class User(SQLModel):
     username: str
-    password: str
+    full_name: str
+    email: str
+    hashed_password: str
+    disabled: bool

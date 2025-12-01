@@ -7,7 +7,6 @@ from uuid import uuid4
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -15,10 +14,7 @@ from src.backend.config import cfg
 from src.backend.model import Link
 from src.backend.repository import get_link_by_full_url, get_short_link
 from src.backend.users import (
-    FormData,
-    UserInDB,
-    fake_hash_password,
-    fake_users_db,
+    User,
     get_current_active_user,
 )
 
@@ -34,7 +30,7 @@ async def get_session():
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
-UserDep = Annotated[FormData, Depends(get_current_active_user)]
+UserDep = Annotated[User, Depends(get_current_active_user)]
 
 
 @asynccontextmanager
@@ -133,17 +129,9 @@ async def erase_short_link(
             await session.commit()
 
 
-@app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user_dict = fake_users_db.get(form_data.username)
-    if not user_dict:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    user = UserInDB(**user_dict)
-    hashed_password = fake_hash_password(form_data.password)
-    if not hashed_password == user.hashed_password:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    app.state.logined = True
-    return {"access_token": user.username, "token_type": "bearer"}
+@app.get("/users/me")
+def read_current_user(user: UserDep):
+    return {"user": user}
 
 
 if __name__ == "__main__":
