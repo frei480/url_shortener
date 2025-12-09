@@ -23,11 +23,16 @@ ASYNC_TEST_DB_URL = (
 
 
 @pytest.fixture(scope="function")
-async def temp_db() -> AsyncGenerator[str]:
+def temp_db_name() -> str:
+    cfg.db_name = "_".join((uuid.uuid4().hex, "pytest"))
+    return cfg.db_name
+
+
+@pytest.fixture(scope="function")
+async def temp_db(temp_db_name: str) -> AsyncGenerator[str]:
     SYNC_TEST_URL = (
         f"postgresql://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}"
     )
-    temp_db_name = ".".join((uuid.uuid4().hex, "pytest"))
 
     # Create temp database
     conn = await asyncpg.connect(dsn=SYNC_TEST_URL)
@@ -37,6 +42,7 @@ async def temp_db() -> AsyncGenerator[str]:
     try:
         yield ASYNC_TEST_DB_URL + f"/{temp_db_name}"
     finally:
+        pass
         conn = await asyncpg.connect(dsn=SYNC_TEST_URL)
         await conn.execute(f'DROP DATABASE "{temp_db_name}"')
         await conn.close()
@@ -60,9 +66,10 @@ async def test_engine(temp_db: str) -> AsyncGenerator[AsyncEngine, None]:
 
 
 @pytest.fixture(scope="function")
-def apply_migrations(test_engine: AsyncEngine):
+def apply_migrations(temp_db_name, test_engine):
     alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", str(test_engine.url))
+    cfg.db_name = temp_db_name
+
     # command.downgrade(alembic_cfg, "base")
     command.upgrade(alembic_cfg, "head")
 

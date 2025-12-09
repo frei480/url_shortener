@@ -18,7 +18,7 @@ async def test_healthcheck(client: AsyncClient):
 async def test_link_redirect(client: AsyncClient, session: AsyncSession):
     url: str = "http://www.example.com"
     response = await client.post("/shorten", params={"original_url": url})
-    raise Exception(response)
+
     short_url = response.json()["short_url"]
 
     response2 = await client.get(f"/{short_url}", follow_redirects=False)
@@ -59,6 +59,7 @@ async def test_shorten_url_really_short(client: AsyncClient):
     assert len(data["short_url"]) == 8
 
 
+@pytest.mark.usefixtures("apply_migrations")
 async def test_redirect_404(client: AsyncClient):
     response = await client.get("/notexists")
 

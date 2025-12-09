@@ -27,9 +27,13 @@ dev = [
 ]
 [tool.mypy]
 plugins = ["pydantic.mypy"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = [".", "src/backend"]
+addopts = [
+    "-s",
+]
 
 [tool.ruff.lint]
 ignore = ["F401"]
