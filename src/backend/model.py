@@ -1,9 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class User(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    username: str
+    full_name: str
+    email: str
+    hashed_password: str
+    disabled: bool
+    # links: list["Link"] = Relationship(back_populates="user")
 
 
 class Link(SQLModel, table=True):
@@ -21,20 +32,10 @@ class Link(SQLModel, table=True):
         + timedelta(days=365)
     )
     user_id: UUID | None = Field(default=None, foreign_key="user.id")
-    user: User | None = Relationship(back_populates="links")
+    # user: "User| None" = Relationship(back_populates="links")
 
     def update_access_time(self):
         self.last_accessed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         self.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
             days=365
         )
-
-
-class User(SQLModel, table=True):
-    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
-    username: str
-    full_name: str
-    email: str
-    hashed_password: str
-    disabled: bool
-    links: list["Link"] = Relationship(back_populates="user")

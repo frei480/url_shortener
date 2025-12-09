@@ -20,22 +20,22 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from src.backend.config import cfg
-from src.backend.model import Link
+from sqlmodel import SQLModel
 
-target_metadata = Link.metadata
+from src.backend.config import cfg
+from src.backend.model import Link, User  # type: ignore # noqa: E402
+
+target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-
-def get_db_url():
-    config.set_main_option(
-        "sqlalchemy.url",
-        f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}",
-    )
+config.set_main_option(
+    "sqlalchemy.url",
+    f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_pass}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}",
+)
 
 
 def run_migrations_offline() -> None:
@@ -50,7 +50,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = get_db_url() or config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -69,11 +69,17 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def run_async_migrations(connectable: AsyncEngine) -> None:
+async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
+    connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
 
@@ -82,17 +88,13 @@ async def run_async_migrations(connectable: AsyncEngine) -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    connectible = context.config.attributes.get("connection", None)
-    if connectible is None:
-        connectible = async_engine_from_config(
-            config.get_section(config.config_ini_section, {}),
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-        )
-    if isinstance(connectible, AsyncEngine):
-        asyncio.run(run_async_migrations(connectible))
+
+    connectable = config.attributes.get("connection", None)
+
+    if connectable is None:
+        asyncio.run(run_async_migrations())
     else:
-        do_run_migrations(connectible)
+        do_run_migrations(connectable)
 
 
 if context.is_offline_mode():
