@@ -35,14 +35,13 @@ async def temp_db(temp_db_name: str) -> AsyncGenerator[str]:
     )
 
     # Create temp database
-    conn = await asyncpg.connect(dsn=SYNC_TEST_URL)
-    await conn.execute(f'CREATE DATABASE "{temp_db_name}" OWNER "{cfg.db_user}"')
+    conn = await asyncpg.connect(dsn=SYNC_TEST_URL)  # type: ignore
+    await conn.execute(f'CREATE DATABASE "{temp_db_name}" OWNER "{cfg.db_user}"')  # type: ignore
     await conn.close()
 
     try:
         yield ASYNC_TEST_DB_URL + f"/{temp_db_name}"
     finally:
-        pass
         conn = await asyncpg.connect(dsn=SYNC_TEST_URL)
         await conn.execute(f'DROP DATABASE "{temp_db_name}"')
         await conn.close()
@@ -60,18 +59,24 @@ def test_user():
 async def test_engine(temp_db: str) -> AsyncGenerator[AsyncEngine, None]:
     """Creates the Async Engine."""
     engine = create_async_engine(temp_db, echo=True)
-
+    async with engine.begin() as conn:
+        await conn.run_sync(__execute_upgrade)
     yield engine
     await engine.dispose()
 
 
+def __execute_upgrade(connection):
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.attributes["connection"] = connection
+    command.upgrade(alembic_cfg, "head")
+
+
 @pytest.fixture(scope="function")
 def apply_migrations(temp_db_name, test_engine):
-    alembic_cfg = Config("alembic.ini")
-    cfg.db_name = temp_db_name
-
-    # command.downgrade(alembic_cfg, "base")
-    command.upgrade(alembic_cfg, "head")
+    pass
+    # alembic_cfg = Config("alembic.ini")
+    # cfg.db_name = temp_db_name
+    # command.upgrade(alembic_cfg, "head")
 
 
 @pytest.fixture(name="session")

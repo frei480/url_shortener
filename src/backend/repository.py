@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.backend.model import Link
+from src.backend.model import Link, User, UserCreate
 
 
 async def get_short_link(session: AsyncSession, short_link: str):
@@ -11,4 +11,13 @@ async def get_short_link(session: AsyncSession, short_link: str):
 
 async def get_link_by_full_url(session: AsyncSession, original_url: str):
     result = await session.exec(select(Link).where(Link.original_url == original_url))
+    return result
+
+
+async def get_user(session: AsyncSession, user: UserCreate):
+    result = await session.exec(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
     return result

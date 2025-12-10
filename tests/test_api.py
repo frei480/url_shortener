@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.backend.model import Link
+from src.backend.model import Link, User, UserCreate
 
 
 async def test_healthcheck(client: AsyncClient):
@@ -105,3 +106,17 @@ async def test_delete_authorized(client: AsyncClient):
     response = await client.delete(f"/{short_url}")
     assert response.status_code == 200
     assert response.json() == {f"{short_url}": "deleted"}
+
+
+@pytest.mark.usefixtures("apply_migrations")
+async def test_create_user(client: AsyncClient, session: AsyncSession):
+    id: str = uuid4().hex
+    new_user: UserCreate = UserCreate(
+        username=id[:8],
+        passwd=id[: 8 - 1],
+        full_name=f"{id[:8]} {id[8:16]}",
+        email=f"{id[:8]}@example.com",
+    )
+    response = await client.post("/users/add", json=new_user.model_dump())
+    print(new_user.model_dump_json())
+    assert response.status_code == 201

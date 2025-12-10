@@ -1,10 +1,18 @@
-from __future__ import annotations
+# from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
+from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class UserCreate(SQLModel):
+    username: str
+    passwd: str
+    full_name: str
+    email: EmailStr
 
 
 class User(SQLModel, table=True):
@@ -14,7 +22,7 @@ class User(SQLModel, table=True):
     email: str
     hashed_password: str
     disabled: bool
-    # links: list["Link"] = Relationship(back_populates="user")
+    links: list["Link"] = Relationship(back_populates="user")
 
 
 class Link(SQLModel, table=True):
@@ -32,7 +40,7 @@ class Link(SQLModel, table=True):
         + timedelta(days=365)
     )
     user_id: UUID | None = Field(default=None, foreign_key="user.id")
-    # user: "User| None" = Relationship(back_populates="links")
+    user: Optional[User] = Relationship(back_populates="links")
 
     def update_access_time(self):
         self.last_accessed_at = datetime.now(timezone.utc).replace(tzinfo=None)
