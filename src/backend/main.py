@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -13,11 +13,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.backend.config import cfg
 from src.backend.model import Link, UserCreate
 from src.backend.repository import (
+    creating_user,
     get_link_by_full_url,
     get_short_link,
-    get_user,
 )
-from src.backend.users import User, fake_hash_password, get_current_active_user
+from src.backend.users import User, get_current_active_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -129,26 +129,11 @@ async def erase_short_link(
 
 
 @app.post("/users/add", status_code=201)
-async def create_user(payload: UserCreate, session: SessionDep):
-    result = await get_user(session, payload)
-    existing = result.first()
-    conflict = ""
-    if existing:
-        if existing.username:
-            conflict = f"username {existing.username}"
-        if existing.email:
-            conflict = f"e-mail {existing.email}"
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"User with {conflict} already exists",
-        )
-    new_user = User(
-        username=payload.username,
-        full_name=payload.username,
-        email=payload.email,
-        hashed_password=fake_hash_password(payload.passwd),
-        disabled=False,
-    )
+async def create_user(
+    payload: UserCreate, session: SessionDep
+) -> dict[str, str | UUID]:
+    new_user = await creating_user(session, payload)
+
     session.add(new_user)
     await session.commit()
     await session.refresh(new_user)

@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from typing import AsyncGenerator
 
@@ -13,7 +12,8 @@ from alembic import command
 from src.backend.config import cfg
 from src.backend.db.session import get_session
 from src.backend.main import app
-from src.backend.users import fake_users_db, get_current_active_user, get_user
+from src.backend.model import User
+from src.backend.users import get_current_active_user
 
 ALEMBIC_CONFIG_PATH = "./alembic.ini"
 
@@ -49,7 +49,18 @@ async def temp_db(temp_db_name: str) -> AsyncGenerator[str]:
 
 @pytest.fixture(scope="function")
 def test_user():
-    user = get_user(fake_users_db, cfg.username)
+    fake_users_db: dict[str, dict[str, str | bool]] = {
+        "appleseed": {
+            "username": cfg.username,
+            "full_name": "John Doe",
+            "email": "johndoe@example.com",
+            "hashed_password": f"fakehashed{cfg.password}",
+            "disabled": False,
+        },
+    }
+    user_data = fake_users_db.get(cfg.username)
+    if user_data:
+        user = User(**user_data)
     app.dependency_overrides[get_current_active_user] = lambda: user
     yield
     del app.dependency_overrides[get_current_active_user]

@@ -7,6 +7,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.backend.model import Link, User, UserCreate
+from src.backend.utils import fake_hash_password
 
 
 async def test_healthcheck(client: AsyncClient):
@@ -111,12 +112,30 @@ async def test_delete_authorized(client: AsyncClient):
 @pytest.mark.usefixtures("apply_migrations")
 async def test_create_user(client: AsyncClient, session: AsyncSession):
     id: str = uuid4().hex
+    name = id[:8]
+    passwd = id[: 8 - 1]
+    full_name = f"{id[:8]} {id[8:16]}"
+    email = f"{id[:8]}@example.com"
+
     new_user: UserCreate = UserCreate(
-        username=id[:8],
-        passwd=id[: 8 - 1],
-        full_name=f"{id[:8]} {id[8:16]}",
-        email=f"{id[:8]}@example.com",
+        username=name,
+        passwd=passwd,
+        full_name=full_name,
+        email=email,
     )
     response = await client.post("/users/add", json=new_user.model_dump())
-    print(new_user.model_dump_json())
+
+    result = await session.exec(
+        select(User).where(
+            (User.username == new_user.username) | (User.email == new_user.email)
+        )
+    )
+    test_user: User | None = None
+    if result:
+        test_user = result.first()
+
     assert response.status_code == 201
+    assert test_user.username == name
+    assert test_user.email == email
+    assert test_user.full_name == full_name
+    assert test_user.hashed_password == fake_hash_password(passwd)
